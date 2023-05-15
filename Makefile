@@ -14,10 +14,10 @@ all: compile
 compile: blend_pyrisc
 
 run: blend_pyrisc
-	$(SIMULATOR) -dma 0x80100000 -dms 0x200000 -i 0x80180000 0x80000 images/301_256.raw -i 0x80200000 0x80000 images/SNU_256.raw -o 0x80280000 0x80000 images/blended.raw $^
+	$(SIMULATOR) -dma 0x80100000 -dms 0x200000 -i 0x80180000 0x80000 images/301_256.raw -i 0x80200000 0x80000 images/SNU_256.raw -o 0x80280000 0x80000 images/blended.raw -l 2 $^
 
 convert:
-	../part-1/raw2img.py blended.raw
+	../part-1/raw2img.py images/blended.raw
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $^
