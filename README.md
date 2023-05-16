@@ -161,7 +161,7 @@ You can now download the RISC-V GNU Toolchain from Github. If you work in the CS
 ```bash
 $ git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
 ```
-This will take a while and download around 3GiB of data. The entire repository occupies around 7GiB. If you do not have that much free space, [you can experiment](https://stackoverflow.com/questions/1209999/how-to-use-git-to-get-just-the-latest-revision-of-a-project) with the `--depthi=1` and `--shallow-submodules` parameter.
+This will take a while and download around 3GiB of data. The entire repository occupies around 7GiB. If you do not have that much free space, [you can experiment](https://stackoverflow.com/questions/1209999/how-to-use-git-to-get-just-the-latest-revision-of-a-project) with the `--depth=1` and `--shallow-submodules` parameter.
 
 #### Building the RISC-V GNU Toolchain
 First, configure the toolchain with
@@ -258,13 +258,36 @@ PyRISC CSAP is a customized version of the [5-stage RISC-V simulator](https://gi
 Similar to the RISC-V GNU toolchain, we have to modify the simulator to make it aware of the new instructions, i.e., how to decode, execute, and print these instructions.
 
 1. **Define instruction encodings**  
-   The instruction encodings of PyRISC are defined in the file `isa.py`. As the GNU toolchain, PyRISC requires a `MATCH` and a `MASK` constant to define a new instruction.
-   Locate the match pattern for `MUL` and the corresponing `MUL_MASK` a bit further down. Add the new instructions in the same format.
+   The instruction encodings of PyRISC are defined in the file `isa.py`. Similar to the GNU toolchain, PyRISC uses a `MATCH` and a `MASK` constant to identify and decode instructions. Add the new encodings (`MATCH`) under `Instruction encodings` and the masks (`MASK`) below `Instruction masks`. Finally, add the new instructions to the `ISA table`.  
+   Here are the modifications to implement `MUL`:  
+   ```Python
+   #--------------------------------------------------------------------------
+   #   Instruction encodings
+   #--------------------------------------------------------------------------
+   ...
+   MUL         = WORD(0b00000010000000000000000000110011)
+
+   #--------------------------------------------------------------------------
+   #   Instruction masks
+   #--------------------------------------------------------------------------
+
+   R_MASK      = WORD(0b11111110000000000111000001111111)
+   ...
+   MUL_MASK    = R_MASK
+
+   #--------------------------------------------------------------------------
+   #   ISA table: for opcode matching, disassembly, and run-time stats
+   #--------------------------------------------------------------------------
+
+   isa         = { 
+       ...
+       MUL     : [ "mul",      MUL_MASK,   R_TYPE,  CL_ALU,   ],
+   }
+
+   ```
+
 2. **Define the control signals**  
    Next, we define the control signals for the new instructions in the file `control.py` and `consts.py`. First, we need to add the new instructions to the `csignals` table. The table contains a key and a list with 12 values as follows:  
-   ```Python
-   MUL : [ Y, BR_N  , OP1_RS1, OP2_RS2, OEN_1, OEN_1, ALU_MUL  , WB_ALU, REN_1, MEN_0, M_X  , MT_X, ],
-   ```
    * key: mnemonic (how the operation is called internally)
    * values: a list of 12 values. In order:  
       * val_inst: set to `Y`.
@@ -279,22 +302,33 @@ Similar to the RISC-V GNU toolchain, we have to modify the simulator to make it 
       * mem_fun: memory function. `M_XRD` to read, `M_XWR` to write, and `M_X` if the memory is not active.
       * msk_sel: memory mask (bit width) selection. Since our new instructions to not access the memory, set to `MT_X`.
 
-    Check whether you need to modify the control signal generation for the new instructions by inspecting the code below the `csignals` table.
+
+   For `MUL`, the necessary changes are:  
+   ```Python
+   #--------------------------------------------------------------------------
+   #   Control signal table
+   #--------------------------------------------------------------------------
+
+   csignals = {
+       ...
+       MUL : [ Y, BR_N  , OP1_RS1, OP2_RS2, OEN_1, OEN_1, ALU_MUL  , WB_ALU, REN_1, MEN_0, M_X  , MT_X, ],
+   }
+   ```
+
+   Finally, check whether you need to modify the control signal generation for the new instructions by inspecting the code below the `csignals` table.
 3. **Define the log output**--
    The file `datapath.py` contains helper strings to print the operation of the pipeline duing operation. We need to add our new instructions to the `ALU_OPS` table in the method `EX(Pipe)::log(self):`
    ```Python
    ALU_OPS = {
      ...
      ALU_MUL     : f'# {self.alu_out:#010x} <- {self.op1_data:#010x} * {self.alu2_data:#010x}',
-     ...
    }
    ```
    Add the log formats for the new instructions accordingly. Refer to the other strings in the table to learn what values are available.
 4. **Define the functionality**  
-   As a final step, we need to implement the ALU operations as defined above for each instruction. Locate the method `op(self, alufun, alu1, alu2)` in class `ALU`. Implement the functionality of the new operations by adding a new `elif ...` block to the table. Again, we have already implement `ALU_MUL` to give you an idea how to approach this:
+   As a final step, we need to implement the semantics of the new ALU operations as defined above for each instruction. Locate the method `ALU::op(self, alufun, alu1, alu2)` in the file `components.py`. Implement the functionality of the new operations by adding a new `elif ...` block to the table. Again, we have already implement `ALU_MUL` to give you an idea how to approach this:
    ```Python
    class ALU(object):
-
     ...
 
     def op(self, alufun, alu1, alu2):
