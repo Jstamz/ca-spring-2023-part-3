@@ -87,7 +87,7 @@ There are various ways to design the layout of a vector register and the instruc
   Vector registers are 32-bit - this allows us to operate on general-purpose registers that contain vectorized values. We divide a register into three channels of 10 bits each as follows:  
   ```
   ----------------------------------------
-  |00|aa.aaaaaaaa|gg.gggggggg|bb.bbbbbbbb|
+  |00|rr.rrrrrrrr|gg.gggggggg|bb.bbbbbbbb|
   ----------------------------------------
   ```
   We drop the alpha channel since the computation of the alpha value is often different than the computation of the color channels. Furthermore, we add two bits before the radix point, yielding a 2.8 fixed-point format. This allows us to deal with
