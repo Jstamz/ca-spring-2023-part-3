@@ -158,10 +158,12 @@ If you use the CSAP VM, you can ignore this section.
 
 #### Downloading the RISC-V GNU Toolchain
 You can now download the RISC-V GNU Toolchain from Github. If you work in the CSAP VM, make sure to change into a folder under your `share` directory first.
+
+We only download the "head" of the repository without all the commit history using the `--depth 1` and `--shallow-submodules` options. Unfortunately, the Git server of MUSL does not properly support shallow exports, so we have to exclude it manually
 ```bash
-$ git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
+$ git clone --depth 1 --recurse-submodules='.' --recurse-submodules=':(exclude)musl' --shallow-submodules  https://github.com/riscv/riscv-gnu-toolchain
 ```
-This will take a while and download around 3GiB of data. The entire repository occupies around 7GiB. If you do not have that much free space, [you can experiment](https://stackoverflow.com/questions/1209999/how-to-use-git-to-get-just-the-latest-revision-of-a-project) with the `--depth=1` and `--shallow-submodules` parameter.
+The RISC-V GNU Toolchain sources and Git metadata require about 4.1 GB of disk space. Compiling the toolchain will increase the total size of the riscv-gnu-toolchain directory to 8.2GB.
 
 #### Building the RISC-V GNU Toolchain
 First, configure the toolchain with
@@ -169,14 +171,15 @@ First, configure the toolchain with
 $ cd riscv-gnu-toolchain
 $ mkdir build
 $ cd build
-$ ../configure --prefix=/opt/riscv --with-arch=rv32g --with-abi=ilp32d
+$ ../configure --with-arch=rv32g --with-abi=ilp32d --prefix=/opt/riscv
 ```
-Feel free to change the installation path to something else, such as `--prefix=../../rvgtc/` if you do not have sufficient space under `/opt/`. If you do change the installation path, make sure to adjust the path in the following examples.
+Feel free to change the installation path to something else, such as `--prefix=../../rvgtc/` if you do not have sufficient space under `/opt/`. If you do change the installation path, make sure to adjust the path in the following examples and in the Makefile of this handout.
 
-You can now build the toolchain a first time. This may take a long time.
+You can now build the toolchain. This may take quite some time, especially if you do not have many processor cores.
 ```
 sudo make -j$(nproc) linux
 ```
+Note `-j$(nproc)` is Bash syntax. If you do not use Bash, you may have to adjust the command. Alternatively, you can simply specify the number of cores manually (`sudo make -j8 linux`).
 
 #### Adding new Instructions to Binutils
 The assembler and disassembler use the opcode definitions located in `binutils/include/opcode/riscv-opc.h` and `binutils/opcodes/riscv-opc.c`.
